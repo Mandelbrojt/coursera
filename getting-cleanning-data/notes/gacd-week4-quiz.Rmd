@@ -1,0 +1,204 @@
+---
+title: "GACD. Week 4 Quiz"
+author: "Luis Moreno"
+date: "1/27/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r Loading Packages}
+library(tidyverse)
+```
+
+## Question 1  
+The American Community Survey distributes downloadable data about United States communities. Download the 2006 microdata survey about housing for the state of Idaho using download.file() from here: 
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06hid.csv
+
+and load the data into R. The code book, describing the variable names is here:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FPUMSDataDict06.pdf 
+
+Apply `strsplit()` to split all the names of the data frame on the characters "wgtp". What is the value of the 123 element of the resulting list?
+
+```{r Answer 1}
+# Download data file and store it
+download.file("https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06hid.csv", destfile = "./data/american_comm_survey.csv")
+
+# Set the working directory
+setwd("/Users/luism/Documents/R/getting-cleaning-data/data")
+
+# Load the downloaded data into R Studio
+dat <- read_csv("./data/american_comm_survey.csv")
+
+# Create a vector containing the column names of the data
+dat_col <- colnames(dat)
+
+# Split the names of the dataframe on the characters "wgtp"
+splitted <- strsplit(dat_col, "wgtp")
+splitted[123]
+```
+
+## Question 2  
+Load the Gross Domestic Product data for the 190 ranked countries in this data set: 
+
+ https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv 
+
+Remove the commas from the GDP numbers in millions of dollars and average them. What is the average? 
+
+Original data sources: 
+
+http://data.worldbank.org/data-catalog/GDP-ranking-table
+```{r Answer 2}
+download.file("https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv",
+              destfile = "./data/countries_gdp.csv")
+
+dat <- read_csv("./data/countries_gdp.csv",
+                col_names = c("country_code",
+                              "gdp_rank",
+                              "x3",
+                              "economy",
+                              "gdp_usdM"),
+                skip = 5)
+
+# Clean the CSV file by subsetting and creating a new data-frame
+c12 <- dat[1:190, 1:2]
+c34 <- dat[1:190, 4:5]
+dat2 <- tibble(c12, c34)
+
+# Substitute commas with blank space of a column
+gdp_wo_commas <- gsub(",", "", dat2$gdp_usdM)
+
+# Calculate the average of a non-numeric value
+mean(as.numeric(gsub(",", "", gdp_wo_commas)))
+```
+
+## Question 3  
+In the data set from Question 2 what is a regular expression that would allow you to count the number of countries whose name begins with "United"?  
+
+Assume that the variable with the country names in it is named countryNames.  
+
+How many countries begin with United? 
+```{r Answer 3}
+# Create a vector with the country names
+countryNames <- dat2$economy
+
+# Number of coincidences starting with a character 
+## Countries starting with "United" Method 1
+length(grep("*United",countryNames))
+## Countries starting with "United" Method 2
+length(grep("^United",countryNames))
+```
+
+## Question 4  
+Load the Gross Domestic Product data for the 190 ranked countries in this data set:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv 
+
+Load the educational data from this data set:
+
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv
+
+Match the data based on the country shortcode. Of the countries for which the end of the fiscal year is available, how many end in June?
+
+Original data sources: 
+
+http://data.worldbank.org/data-catalog/GDP-ranking-table  
+
+http://data.worldbank.org/data-catalog/ed-stats  
+```{r Answer 4}
+# Load the first CSV file
+gdp_ranks <- read_csv("https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FGDP.csv", 
+                      skip = 5,
+                      col_names = c("country_code",
+                                    "gd_rank",
+                                    "x3",
+                                    "economy",
+                                    "gdp_usdM"))
+# Clean the first CSV file
+gr1 <- gdp_ranks[1:190, 1:2]
+gr2 <- gdp_ranks[1:190, 4:5]
+gdp_ranks <- tibble(gr1, gr2)
+
+# Load the second CSV file
+education <- read_csv("https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FEDSTATS_Country.csv")
+
+# Load the data.table package
+library(data.table)
+
+# Create the data.table objects
+dt1 <- data.table(gdp_ranks)
+dt2 <- data.table(education)
+
+# Set the keys to sort them in ascending order
+setkey(dt1, country_code)
+setkey(dt2, CountryCode)
+
+# Merge the datasets
+merged_data <- merge(x = dt1, 
+                     y = dt2,
+                     by.x = "country_code",
+                     by.y = "CountryCode")
+# Create a variable where coincidences will be search
+fiscal_info <- na.omit(object = merged_data$`Special Notes`)
+
+# Count the number of coincidences
+length(grep(pattern = "[J]une",
+            x = fiscal_info))
+```
+
+## Question 5  
+You can use the [quantmod](http://www.quantmod.com/) package to get historical stock prices for publicly traded companies on the NASDAQ and NYSE.  
+
+Use the following code to download data on Amazon's stock price and get the times the data was sampled.
+
+```{r}
+library(quantmod)
+
+amzn <- getSymbols("AMZN",
+                  auto.assign=FALSE)
+
+sampleTimes <- index(amzn)
+class(sampleTimes)
+```
+
+How many values were collected in 2012? How many values were collected on Mondays in 2012?
+
+```{r Answer 5}
+# Load required packages
+library(lubridate)
+
+# Count the number of dates that start with "2012"
+sum(
+     grepl(pattern = "^2012",
+           x = sampleTimes)
+)
+
+# Create a logical vector for 2012 dates
+logical_date <- grepl(pattern = "^2012",
+                      x = sampleTimes)
+
+# Subset dates for the year 2012
+twoK_twelve <- subset(sampleTimes, 
+                              logical_date)
+
+# Create a vector containing the day names
+days_names <- wday(twoK_twelve,
+                   label = TRUE)
+
+# Count the number of Mondays
+sum(
+     grepl(pattern = "^Mon",
+           x = days_names)
+)
+```
+
+# Solution Key  
+
+1.        "" "15"  
+2.        377652.4  
+3.        grep("^United",countryNames), 3  
+4.        8  
+5.        250, 47  

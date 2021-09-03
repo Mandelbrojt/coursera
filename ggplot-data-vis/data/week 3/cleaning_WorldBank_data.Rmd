@@ -1,0 +1,90 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r Import Data}
+# Load packages
+library(tidyverse)
+
+##### DATASETS #####
+# Original datasets can be downloaded at:
+## http://api.worldbank.org/v2/en/indicator/NY.GDP.MKTP.CD?downloadformat=csv
+## http://api.worldbank.org/v2/en/indicator/SP.POP.TOTL?downloadformat=csv
+## https://statisticstimes.com/geography/countries-by-continents.php
+
+gdp_csv_name <- "API_NY.GDP.MKTP.CD_DS2_en_csv_v2_2055594.csv"
+pop_csv_name <- "API_SP.POP.TOTL_DS2_en_csv_v2_2106202.csv"
+continents_csv_name <- "countries_by_continent.csv"
+
+# Read each CSV file and store them as tibbles
+pop <- read_csv(paste0("./", pop_csv_name), skip = 4)
+gdp <- read_csv(paste0("./", gdp_csv_name), skip = 4)
+countries_and_continents <- read_csv(paste0("./", continents_csv_name))
+
+# Delete the last 2 columns of the first two CSV files
+pop <- pop %>% select(-c(length(pop)-1,
+                         length(pop)))
+
+gdp <- gdp %>% select(-c(length(gdp)-1,
+                         length(gdp)))
+
+##### WRANGLING DATA ######
+## NOTE: FIRST TWO CSV FILES HAVE THE SAME NUMBER OF ROWS, NUMBER OF COLUMNS AND COLUMN NAMES
+## SO TO OBTAIN UNIQUE VALUES, JUST ONE CSV FILE MAY BE USED
+
+# Extract country names from the "pop" dataset
+unique_countries <- pop[[1]]
+# Extract year values from the "pop" dataset
+unique_years <- names(pop)[5:64]
+# Extract the country codes from the "pop" dataset
+unique_ctycode <- pop[[2]]
+
+# Create vectors by repeating values
+years <- rep(unique_years, each = 264)
+countries <- rep(unique_countries, 60)
+country_codes <- rep(unique_ctycode, 60)
+
+
+pop_values <- c()
+# For each element "x" in "unique_years", 
+for(x in as.character(unique_years)){
+     # Append to "pop_values" each print
+     pop_values <- append(pop_values, 
+                          # Print complete "x" column
+                          print(pop[[x]]))
+}
+
+
+gdp_values <- c()
+for(x in as.character(unique_years)){
+     gdp_values <- append(gdp_values, 
+                          print(gdp[[x]]))
+}
+
+# Standardize "gdp_values" and "pop_values" into millions
+gdp_values <- as.numeric(gdp_values / 1000000)
+pop_values <- as.numeric(pop_values / 1000000)
+
+pop_gdp <- tibble(years, 
+                  countries, 
+                  country_codes, 
+                  gdp_values, 
+                  pop_values)
+
+names(pop_gdp) <- c("year", 
+                    "country_name", 
+                    "country_code", 
+                    "gdp_usd", 
+                    "total_pop")
+
+pop_gdp$gdp_per_capita <- pop_gdp$gdp_usd / pop_gdp$total_pop
+
+pop_gdp <- left_join(pop_gdp, 
+                     countries_and_continents, 
+                     by = "country_code") %>% 
+     select(year, country_name, country_code, 
+            continent, gdp_usd, total_pop, gdp_per_capita)
+
+# Create a CSV file with the new and cleaned dataset
+write_csv(pop_gdp, "./population_and_gdp.csv")
+```

@@ -1,0 +1,936 @@
+---
+title: "Getting and Cleaning Data"
+author: "Luis Moreno"
+date: "9/21/2020"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Note: the `echo = FALSE` parameter is added to the code chunk to prevent printing of the R code.  
+
+## Downloading and Reading Excel files  
+```{r, eval = FALSE}
+fileURL <- "https://data.baltimorecity.gov/api/views/dz54-2aru/rows.xlsx?accessType=DOWNLOAD"
+download.file(fileURL, destfile = "./data/cameras.xlsx", method = "curl")
+dateDownloaded <- date()
+```
+
+### read.xlsx()  
+This function allows the user to read data from an Excel worksheet. It provides the convenience of `read.table` by borrowing from its signature.  
+
+### Main arguments for read.xlsx function  
+```{r read.xlsx Structure, eval = FALSE}
+library(xlsx)
+str(read.xlsx)
+```
+
+**file**: the path to the file to read.  
+**sheetIndex**: a number representing the sheet index in the workbook.  
+**sheetName**: a character string with the sheet name.  
+**rowIndex**: a numeric vector indicating the rows you want to extract.  
+**colIndex**: a numeric vector indicating the cols you want to extract.  
+**head**: a logical value indicating whether the first row corresponding to the first element of the *rowIndex* vector contains the names of the variables.  
+
+```{r, eval = FALSE}
+colIndex <- 2:3
+rowIndex <- 1:4
+cameraDataSubset <- read.xlsx("./data/cameras.xlsx", sheetIndex = 1,
+                              colIndex = colIndex, rowIndex = rowIndex)
+cameraDataSubset
+```
+
+### Further Notes  
+**write.xlsx**: it will write out an Excel file with similar arguments.  
+
+**read.xlsx2**: it is faster than `read.xsls` but for reading subsets of rows is more unstable.  
+
+**XLConnect**: this package has more options for writing and manipulating Excel files.  
+
+**XLConnect vignette**: is a good place to start for that package.
+
+**Advise**: it is better to store data into a database or in comma separated files `.csv` or tab separated files `.tab`/`.txt`.  
+
+## Reading XML files  
+### XML  
+XML is the abbreviation for "Extensible Markup Language". It is frequently used to store *structured data*, particularly in internet applications.  
+Its components are:  
+ - Markup: labels that give the text structure.  
+ - Content: the actual text of the document.  
+ 
+ [XML Tutorial](https://www.w3schools.com/xml/)   
+ 
+ ### Tags, elements and attributes  
+  - Start tags: <section>  
+  - End tags: </section>  
+  - Empty tags: <line-break>  
+  - Attributes: <step number="3"> Connect A to B. </step>  
+
+```{Reading XML, eval = FALSE}
+library(XML)
+fileURL <- "./data/yuri_piquet.xml"
+doc <- xmlTreeParse(fileURL, useInternalNodes = TRUE)
+rootNode <- xmlRoot(doc)
+xmlName(rootNode)
+names(rootNode)
+```
+
+Setting `useInternalNodes` to TRUE, allows us to obtain all internal nodes from the XML file.  
+
+### Accessing parts of the XML document with square brackets
+```{r, eval = FALSE}
+### Accessing parts of the XML document with square brackets
+rootNode[[1]]
+rootNode[[1]][[1]]
+rootNode[[1]][[1]][[1]][[1]]
+```
+
+### Programatically extract objects from an XML file
+If your variable (in this example the "rootNode") contains the entire XML, then this function will go through every single tagged element in the entire document. Generally, it will return all the text inside the XML file.  
+
+```{r, eval = FALSE}
+## Extract all text from the XML file
+xmlSApply(rootNode, xmlValue)
+```
+
+### XPath Language  
+- /node: returns the top level node.  
+- //node: returns a node at any level.    
+- node[@attr-name]: returns a node with an attribute name.  
+- node[@attr-name='bob']: returns a node with an attribute name 'bob'.  
+
+```{r, eval = FALSE}
+## Extract all values from an specific node
+xpathSApply(rootNode, "//SaldoActual", xmlValue)
+xpathSApply(doc, "//NombreOtorgante", xmlValue)
+xpathSApply(doc, "//CreditoMaximo", xmlValue)
+```
+
+## Reading HTML source code  
+```{r, eval = FALSE}
+fileURL <- "https://www.espn.com/nfl/team/_/name/bal/baltimore-ravens"
+doc <- htmlTreeParse(fileURL, useInternal = TRUE)
+## Look for elements that are list items that have a particular class
+scores <- xpathSApply(doc, "//li[@class='score']", xmlValue)
+teams <- xpathSApply(doc, "//li[@class='team-name']", xmlValue)
+```
+
+## Reading JSON  
+JSON stands for "Javascript Object Notation", ant it is used for lightweight data storage. It is similar in structure to XML files but different syntax/format.  
+
+Data on JSON can be stored as:  
+- Numbers  
+- Strings  
+- Boolean  
+- Array  
+- Object  
+
+[More on JSON](https://en.wikipedia.org/wiki/JSON)  
+
+### Reading data with jsonlite package  
+```{r, eval = FALSE}
+library(jsonlite)
+## Read a JSON file for APPLE stock candle quotes from Finnhub
+jsonData <- fromJSON("https://finnhub.io/api/v1/stock/candle?symbol=AAPL&resolution=1&from=1572651390&to=1572910590&token=br08q97rh5r9j5ovs4fg")
+## Obtain the names in the JSON file
+names(jsonData)
+## Obtain nested objects in JSON
+names(jsonData$c)
+```
+
+### Writing data frames into JSON  
+```{r, eval = FALSE}
+## Convert a data frame in R into JSON format
+myjson <- toJSON(iris, pretty = TRUE)
+cat(myjson)
+## Convert back to JSON
+iris2 <- fromJSON(myjson)
+head(iris2)
+```
+
+### Further resources  
+[JSON Official Website](https://www.json.org/json-en.html)  
+[JSON Tutorial](https://www.r-bloggers.com/2013/12/new-package-jsonlite-a-smarter-json-encoderdecoder/)  
+
+## The data.table Package  
+All functions that accept `data.frame` can be applied over `data.table`.  
+This package is written in `C`, making it much faster for **subsetting**, **grouping**, **updating**, among others.  
+```{r, eval = FALSE}
+library(data.table)
+## Create a data frame using data.frame method
+DF = data.frame(x = rnorm(9), y = rep(c("a", "b", "c"), each = 3), z = rnorm(9))
+head(DF, 3)
+
+## Create a data table using data.table method
+DF = data.table(x = rnorm(9), y = rep(c("a", "b", "c"), each = 3), z = rnorm(9))
+head(DF, 3)
+
+## See all the data tables in memory
+tables()
+
+## Subsetting rows
+DT[2, ]
+DT[DT$y='a', ]
+DT[c(2,3)]
+```
+
+### Subsetting in data.table  
+- Subsetting function is modified for `data.table`.  
+- The argument after the comma is called an "expression".  
+- In R, an expression is a collection of statements enclosed in curly brackets.  
+
+### Calculating values for variables with expressions  
+```{r, eval = FALSE}
+## Subsetting columns
+DT[, c(2,3)]
+
+#Subset the data table applying functions
+DT[, list(mean(x), sum(z))]
+DT[, table(y)]
+
+## Add new columns
+DT[, w:=z^2]
+
+## Multiple step operations are combine with an expression that starts and ends with curly brackets, each statement is followed by a semicolon.
+DT[, m:= {tmp <- (x+z); log2(tmp+5)}]
+
+## plyr like operations
+# Take the mean of x + w and group it by variable "a"
+DT[, b:= mean(x+w), by = a]
+
+## Special variables
+# .N is an integer of length 1 containing the number
+set.seed(123);
+DT <- data.table(x = sample(letters[1:3], 1E5, TRUE))
+
+## Count the number of times a value of column x appears
+DT[, .N, by = x]
+```
+
+### Keys  
+```{r, eval = FALSE}
+## Set the key of the table to the column x
+DT <- data.table(x = rep(c("a", "b", "c"), 
+                         each = 100), 
+                 y = rnorm(300))
+setkey(DT, x)
+DT['a']
+
+## Join two tables by setting the keys of both
+DT1 <- data.table(x = c('a', 'a', 'b', 'dt1'), y = 1:4)
+DT2 <- data.table(x = c('a', 'a', 'b', 'dt2'), z = 5:7)
+setkey(DT1, x); setkey(DT2, x)
+merge(DT1, DT2)
+
+## Fast reading of table files
+big_df <- data.frame(x = rnorm(1E6), y = rnorm(1E6))
+file <- tempfile()
+write.table(big_df, file = file, row.names = FALSE, col.names = TRUE, sep = "\t", quote = FALSE)
+system.time(fread(file))
+
+system.time(read.table(file, header = TRUE, sep = "\t"))
+```
+
+### Further Reading  
+[Latest Developments on Data Tables](https://r-forge.r-project.org/scm/viewvc.php/pkg/NEWS?view=markup&root=datatable)   
+[Differences Between data.table and data.frame](http://stackoverflow.com/questions/13618488/what-you-can-do-with-data-frame-that-you-cant-in-data-table)  
+[Notes on data.tables](https://github.com/raphg/Biostat-578/blob/master/Advanced_data_manipulation.Rmd)  
+
+## Reading from MySQL  
+Install RMySQL 
+If using Mac: install.packages("RMySQL")  
+If using Windows:  visit **http://biostat.mc.vanderbilt.edu/wiki/Main/RMySQL**, or  **http://www.ahschulz.de/2013/07/23/installing-rmysql-under-windows/**  
+### UCSC Database  
+Database Help Page: **http://genome.ucsc.edu/goldenPath/help/mysql.html**  
+### Connecting and listing databases in R  
+```{r, eval = FALSE}
+library(RMySQL)
+ucscDB <- dbConnect(MySQL(), user = "genome",
+                    host = "genome-mysql.cse.ucsc.edu")
+result <- dbGetQuery(ucscDB, "show databases;"); dbDisconnect(ucscDB);
+head(result, 5)
+```
+### Connecting to hg19 and listing tables  
+```{r, eval = FALSE}
+hg19 <- dbConnect(MySQL(), user = "genome", db = "hg19",
+                  host = "genome-mysql.cse.ucsc.edu")
+allTables <- dbListTables(hg19)
+length(allTables)
+allTables[1:5]
+```
+
+### Getting dimensions of a specific table  
+```{r, eval = FALSE}
+dbListFields(hg19, "affyU133Plus2")
+```
+### Executing queries
+```{r, eval = FALSE}
+dbGetQuery(hg19, "select count(*) from affyU133Plus2")
+```
+### Reading from a table
+```{r, eval = FALSE}
+affyData <- dbReadTable(hg19, "affyU133Plus2")
+head(affyData)
+```
+### Select a specific subset
+```{r, eval = FALSE}
+query <- dbSendQuery(hg19, "SELECT * FROM affyU133Plus2 WHERE misMatches BETWEEN 1 AND 3")
+affyMis <- fetch(query); quantile(affyMis$misMatches)
+affyMisSmall <- fetch(query, n = 10); dbClearResult(query);
+dim(affyMisSmall)
+dbDisconnect(hg19)
+```
+**NOTE: Every time a connection is done using, it must be closed with the dbDisconnect() function.**  
+
+### Further Reading  
+RMySQL Vignette: https://cran.r-project.org/web/packages/RMySQL/RMySQL.pdf  
+Lis of commands: https://www.pantz.org/software/mysql/mysqlcommands.html  
+Other resources: https://www.r-bloggers.com/2011/08/mysql-and-r/  
+
+## HDF5
+The Hierarchical Data Format (HDF) is a set of files (HDF4, HDF5) designed to organize and store large amounts of data. 
+The rhdf5 package is thus suited for the exchange of large and/or complex datasets between R and other software package, and for letting R applications work on datasets that are larger than the available RAM.  
+Groups that contain zero or more data sets and metadata:  
+- Have a **group header** with a group name and list attributes.  
+- Have a **group symbol table** with a list of objects in group.  
+Datasets multidimensional array of data elements with metadata  
+- Have a header with name, datatype, dataspace, and storage layout  
+- Have a data array with the data  
+### HDF5 R Package  
+ 
+```{r, eval = FALSE}
+# Install R HDF5 Package
+source("http://bioconductor.org/biocLite.R")
+biocLite("rhdf5")
+
+# If there is an error with R version try installing with
+if (!requireNamespace("BiocManager", quietly = TRUE))
+    install.packages("BiocManager")
+BiocManager::install(version = "3.11")
+
+BiocManager::install("rhdf5")
+
+# Load HDF5 Package
+library(rhdf5)
+created = h5createFile("example.h5")
+created
+
+# More information on rhdf5
+browseVignettes("rhdf5")
+```
+
+### Creating groups in rhdf5
+```{r, eval = FALSE}
+created = h5createGroup("example.h5", "foo")
+created = h5createGroup("example.h5", "baa")
+created = h5createGroup("example.h5", "foo/foobaa")
+h5ls("example.h5")
+```
+
+### Writting groups in rhdf5
+```{r,eval = FALSE}
+A = matrix(1:10, nrow = 5, ncol = 2)
+h5write(A, "example.h5", "foo/A")
+
+B = array(seq(0.1, 2.0, by = 0.1), dim = c(5,2,2))
+attr(B, "scale") <- "liter"
+h5write(B, "example.h5", "foo/foobaa/B")
+h5ls("example.h5")
+```
+
+### Writting data sets
+```{r,eval = FALSE}
+df = data.frame(1L:5L, seq(0, 1, length.out = 5),
+                c("ab", "cde", "fghi", "a", "s"), stringsAsFactors = FALSE)
+h5write(df, "example.h5", "df")
+h5ls("example.h5")
+```
+
+### Writting data sets
+```{r,eval = FALSE}
+readA = h5read("example.h5", "foo/A")
+readB = h5read("example.h5", "foo/foobaa/B")
+readdf = h5read("example.h5", "df")
+readA
+```
+
+### Writting and reading chunks
+```{r,eval = FALSE}
+h5write(c(12, 13, 14), "example.h5", "foo/A", index = list(1:3, 1))
+h5read("example.h5", "foo/A")
+```
+
+## Reading from the Web  
+**Webscraping**: programatically extracting data from the HTML code of websites.  
+###Getting data off web pages with readLines()  
+```{r, eval = FALSE}
+con = url("https://www.tutiempo.net/guadalajara.html?datos=calendario")
+htmlCode = readLines(con)
+close(con)
+htmlCode
+```
+
+### Parsing with XML  
+```{r, eval = FALSE}
+# This code is currently returning an error message
+library(XML)
+url <- "https://scholar.google.com/citations?user=HI-I6C0AAAAJ&hl=en"
+html <- htmlTreeParse(url, useInternalNodes = TRUE)
+xpathSApply(html, "//td", xmlValue)
+xpathSApply(html, "//td[@id = 'col-citedby']", xmlValue)
+```
+### GET from the httr Package  
+```{r, eval = FALSE}
+library(httr)
+url <- "https://www.tutiempo.net/guadalajara.html?datos=calendario"
+html2 = GET(url)
+content2 = content(html2, as = "text")
+library(XML)
+parsedHTML <- htmlParse(content2, asText = TRUE)
+xpathSApply(parsedHTML, "//title", xmlValue)
+xpathSApply(parsedHTML, "//td", xmlValue)
+data <- xpathSApply(parsedHTML, "//td", xmlValue)
+variables <- data[c(267, 269, 271, 273, 275, 277, 279, 281)]
+```
+
+### Accesing websites with passwords  
+```{r, eval = FALSE}
+pg1 = GET("http://httpbin.org/basic-auth/user/passwd")
+pg1
+# Accessing into a website with an user and password
+pg2 = GET("http://httpbin.org/basic-auth/user/passwd", authenticate("user", "passwd"))
+pg2
+# Returns the components of the website
+names(pg2)
+## Returns the contents of the website
+content(pg2)
+```
+
+### Using handles  
+Using handles lets you "save" the authentication across multiple accesses to a website.  
+```{r, eval = FALSE}
+# Set the Google website as the handler
+google = handle("https://www.google.com/")
+pag1 = GET(handle = google, path = "/")
+pag2 = GET(handle = google, path = "search")
+```
+
+## Reading from APIs  
+### Accessing Twitter API from R  
+```{r, eval = FALSE}
+myapp = oauth_app("twitter",
+                  key = "H8Kg1tQYXOwZUmSSvyAhNCVyy",
+                  secret = "i1XRYLQU5o1o9tYX5xUGCG38fceLPhyDPKw4RN5SLdBlFaoKo0")
+sig = sign_oauth1.0(myapp,
+                    token = "1311497555662962688-pTlv5FeIHkFsYmc6LqcIOq650eXrEc",
+                    token_secret = "RzhEi6XCRQxYonsh6idt9eyceV22wvQAZoZoaH6LjhbqS")
+homeTL = GET("https://api.twitter.com/2/users/Trafico_ZMG", sig)
+```
+
+### Nothes and further resources  
+[**Web Scraping Via XPath**](https://www.r-bloggers.com/2011/11/web-scraping-yahoo-search-page-via-xpath/)  
+[**httr Package**](https://cran.r-project.org/web/packages/httr/vignettes/quickstart.html)  
+
+
+
+## Subsetting and Sorting  
+### Subsetting with square brackets  
+```{r, eval = FALSE}
+# Set seed for reproducibility
+set.seed(13435)
+# Create a data frame with three variables
+X <- data.frame("var1" = sample(1:5),
+                "var2" = sample(6:10),
+                "var3" = sample(7:11))
+# Insert NA values in some rows of the data frame
+X <- X[sample(1:5), ]; x$var2[c(1,3)] = NA
+
+# Subset the first column by index
+X[, 1]
+# Subset the first column by column name
+X[, "var1"]
+# Subset rows of a column by index and column name
+X[1:2, "var2"]
+
+```
+### Subsetting with logicals and functions  
+```{r, eval = FALSE}
+# Subset rows of a data frame with "and" logical
+X[(X$var1 <= 3 & X$var3 > 11), ]
+# Subset rows of a data frame with "or" logical
+X[(X$var1 <= 3 | X$var3 > 15), ]
+# Subset rows of a data frame with the "which" function
+X[which(X$var2 > 8), ]
+```
+### Sorting  
+```{r, eval = FALSE}
+# Sort first column in increasing order
+sort(X$var1)
+# Sort first column in decreasing order
+sort(X$var1, decreasing = TRUE)
+# Sort NA values of a column at last
+sort(X$var2, na.last = TRUE)
+```
+### Ordering  
+```{r, eval = FALSE}
+# Order all rows of a data frame by a column
+X[order(X$var1), ]
+# Order all rows of a data frame by multiple columns
+X[order(X$var1, X$var3), ]
+```
+### Arranging data with plyr package  
+```{r, eval = FALSE}
+library(plyr)
+# Arrange a data frame by a column
+arrange(X, var1)
+# Arrange a data frame by a column in descending order
+arrange(X, desc(var1))
+```
+### Adding rows and columns  
+```{r, eval = FALSE}
+# Add a column by varaible specification
+X$var4 <- rnorm(5)
+# Add a column using "cbind"
+Y <- cbind(X, rnorm(5))
+# Add a row using "rbinf"
+Y <- rbind(X, rnorm(5))
+```
+## Summarizing Data  
+```{r, eval = FALSE}
+file <- "https://data.baltimorecity.gov/api/views/k5ry-ef3g/rows.csv?accessType=DOWNLOAD"
+restData <- read_csv(file)
+# Show the first 5 rows of the CSV file
+head(restData, 5)
+# Show the last 5 rows of the CSV file
+tail(restData, 5)
+# Show the overall summary of the CSV file
+summary(restData)
+# Show the structureof the CSV file
+str(restData)
+# Show the column names of the CSV file
+names(restData)
+# Show the quantiles for quantitative data deleting NA values
+quantile(restData$councilDistrict, na.rm = TRUE)
+# Show the percentiles of a quantitative variable
+quantile(restData$councilDistrict, na.rm = TRUE, probs = c(0.5, 0.75, 0.9))
+```
+### Create Tables  
+```{r, eval = FALSE}
+# Build a contingency table of the counts of an object as factors counting also NA values
+table(restData$zipCode, useNA = "ifany")
+# Build a two-dimensional contingency table for qualitative variables
+table(restData$zipCode, restData$councilDistrict)
+```
+### Check for Missing Values  
+```{r, eval = FALSE}
+# Use "is.na" to convert values of an R object into logical for measuring the number of NA values
+sum(is.na(restData$councilDistrict))
+# Check if any values of an R object is True when applying the "is.na" function
+any(is.na(restData$councilDistrict))
+# Use "colSums" to add for each column the number of NA cases
+all(colSums(is.na(restData)) == 0)
+```
+## Values with specific characteristics  
+```{r, eval = FALSE}
+# Count the number of ocurrences for each value of an R object and look if a single or multiple characteristic is met
+table(restData$zipCode %in% c("21212", "21213"))
+# Subset a data set by specifiying the characteristic to be met
+restData[restData$zipCode %in% c("21212", "21213"), ]
+```
+### Cross Tabs  
+**Note**: for the following example, the first argument of the "xtabs" function will be the data displayed on the table, the second argument along with the "+" symbol specifies the variables that will be used to break down the data.  
+```{r, eval = FALSE}
+data("UCBAdmissions")
+DF = as.data.frame(UCBAdmissions)
+summary(DF)
+names(DF)
+# Create a cross tab to count the number of admitted and rejected people by their gender
+xt <- xtabs(Freq ~ Gender + Admit, data = DF)
+```
+### Flat Tables  
+```{r, eval = FALSE}
+warpbreaks$replicates <- rep(1:9, len = 54)
+xt = xtabs(breaks ~., data = warpbreaks)
+xt
+# Create a flat table
+ftable(xt)
+```
+### Calculate the size of a data set  
+``` {r, eval = FALSE}
+fakeData = rnorm(1e5)
+# Calculate the size of the created data set in bytes
+object.size(fakeData)
+# Print the size of the data set in megabytes
+print(object.size(fakeData), units = "Mb")
+```
+## Creating New Variables  
+It is common to create new variables when manipulating raw data, some common variables to create are:  
+- Missingness indicators,  
+- "Cutting up" quantitative variables,  
+- Applying transformations.  
+### Creaeting sequences  
+Sequences are a useful tool for creating an index for your data.  
+```{r, eval = FALSE}
+# Create a sequence of numbers with a minimum of 1 and a maximum of 10 increasing by 2
+s1 <- seq(1, 10, by = 2); s1
+# Create a sequence of 3 numbers with a minimum of 1 and a maximum of 10
+s2 <- seq(1, 10, length = 3); s2
+# Create a consecutive index to loop over the elements of a vector "x"
+x <- c(1, 3, 8, 25, 100); seq(along = x)
+```
+### Subsetting variables  
+``` {r, eval = FALSE}
+# Create a new logical variable that meets and specific condition or characteristic
+restData$nearMe = restData$neighborhood %in% c("Roland Park", "Homeland")
+# Count the number of True and False values of the new logical variable
+table(restData$nearMe)
+```
+### Creating binary variables  
+```{r, eval = FALSE}
+# Create a new binary variable with "ifelse" function
+restData$zipWrong <- ifelse(restData$zipCode < 0, TRUE, FALSE)
+# Create a contigency table to count True and False cases
+table(restData$zipCode < 0, restData$zipWrong)
+```
+### Creating categorical variables  
+```{r, eval = FALSE}
+
+# Create a new variable by converting a numeric vector into a factor by cutting. Use quantiles as cut points.
+restData$zipGroups = cut(restData$zipCode, breaks = quantile(restData$zipCode))
+# Use table to visualize the number of elements on each percentile created previously
+table(restData$zipGroups)
+# Use table to visualize which zip codes falls into which category
+table(restData$zipCode, restData$zipGroups)
+```
+### Using "Hmisc" package to cut variables  
+```{r, eval = FALSE}
+library(Hmisc)
+# Create a new variable that groups zip code into 4 groups
+restData$zipGroups = cut2(restData$zipCode, g = 4)
+table(restData$zipGroups)
+```
+### Creating factor variables  
+```{r,eval = FALSE}
+# Use "factor" function to encode a vector as a factor (category or enumerated type)
+restData$zcf <- factor(restData$zipCode)
+restData$zcf[1:10]
+class(restData$zcf)
+```
+### Levels of factor variables  
+```{r, eval = FALSE}
+# Create a dummy variable randomly and of size 10
+yesno <- sample(c("yes", "no"), size = 10, replace = TRUE)
+# Transform the dummy variable into a factor
+yesnofac = factor(yesno, levels = c("yes", "no"))
+# Relevel the new factor variable and use "yes" as the reference class
+relevel(yesnofac, ref = "yes")
+# Convert a factor level into a numeric type
+as.numeric(yesnofac)
+```
+### Factor variables with cutting  
+```{r, eval = FALSE}
+library(Hmisc); library(dplyr)
+# Use the first data set to create a new data set with the "mutate" function. Use "cut2" to group zip code into 4 intervals
+restData2 = mutate(restData, zipGroups = cut2(zipCode, g = 4))
+table(restData2$zipGroups)
+```
+### List of common transformations  
+- **abs(x)**: computes the absolute value of x,  
+- **sqrt(x)**: computes the square root of x,  
+- **ceiling(x)**: takes a numeric argument and returns a numeric vector containing the *smallest* integers not less than the corresponding elements of x,  
+- **floor**: takes a single numeric argument x and returns a numeric vector containing the *largest* integers not greater than the corresponding elements of x,  
+- **round(x, digits = n)**: rounds the values in its first argument to the specified number of decimal places,  
+- **signif(x, digits = n)**: rounds the values in its first argument the specified number of significant digits,  
+- **cos(x), sin(x), etc**: computes trigonometric functions of the variable x,  
+- **log(x)**: computes the natural logarithm of x,  
+- **log2(x), log10(x)**: computs the logarithm of base 2, 10, etc.,  
+- **exp(x)**: computes the exponentiation of x.  
+### Notes and further reading  
+[Plyr Tutorial](http://had.co.nz/plyr/)  
+[Data Summarization and Manipulation](http://www.biostat.jhsph.edu/~ajaffe/lec_winterR/Lecture%202.pdf)  
+
+## Reshaping Data  
+### Melting Data Frames  
+``` {r, eval = FALSE}
+library(reshape2)
+mtcars$carname <- rownames(mtcars)
+# Melt the data frame and specify the id variables and the measure variables
+carMelt <- melt(mtcars, id = c("carname", "gear", "cyl"), measure.vars = c("mpg", "hp"))
+head(carMelt, 3)
+tail(carMelt, 3)
+```
+### Casting Data Frames  
+``` {r, eval = FALSE}
+# Cast the molten "mtcars" by specifying the rows ~ columns. By default it counts the number of measures for each variable
+cylData <- dcast(carMelt, cyl ~ variable)
+cylData
+# Cast the molten "mtcars" by specifying the rows ~ columns and adding a function to calculate the mean for each variable
+cylData <- dcast(carMelt, cyl ~ variable, mean)
+cylData
+```
+### Averaging Values within Factors  
+```{r, eval = FALSE}
+head(InsectSprays, 10)
+# Apply the sum function to the "count" column using the "spray" column as factors
+tapply(InsectSprays$count, InsectSprays$spray, sum)
+```
+### Split, Apply, Combine  
+```{r, eval = FALSE}
+# Divide the "count" column into groups defined by the "spray" column (the result object is a list)
+spIns = split(InsectSprays$count, InsectSprays$spray)
+# Apply to the splitted list the sum function
+sprCount = lapply(spIns, sum)
+# Combine the results
+unlist(sprCount)
+# Combine-Apply Method 1: the "sapply" function can also be used to apply a function to a vector or an expression object and then combine the data in just one function
+sapply(spIns, sum)
+# Combine-Apply Method 2: summarize the "InsectSprays" data set by the spray column (use ".(spray)" to omit quotation marks) and specify the function and the variable to sum by
+ddply(InsectSprays,.(spray), summarize, sum = sum(count))
+# Create a new variable using "ddply"
+spraySums <- ddply(InsectSprays,.(spray),summarize,sum = ave(count,FUN = sum))
+dim(spraySums)
+head(spraySums, 5)
+```
+### More Information on Reshaping Data  
+[plyr Tutorial](https://plyr.had.co.nz/09-user/)  
+[Reshape Tutorial](https://www.slideshare.net/jeffreybreen/reshaping-data-in-r)  
+[plyr Primer](https://www.r-bloggers.com/2011/12/a-quick-primer-on-split-apply-combine-problems/)  
+
+## Editing Text Variables  
+```{r, eval = FALSE}
+cameraData <- read_csv("./data/cameras.csv")
+# Convert column names into lower case
+tolower(names(cameraData))
+# Convert column names into upper case
+toupper(names(cameraData))
+```
+### Fixing Character Vectors  
+```{r, eval = FALSE}
+# Column names format 1
+v <- c("zip.codes", "location.1", "address.1", "cross.street")
+# Separate a character vector by each period
+splitted_vector <- strsplit(v, "\\.")
+# Create a function to extract the first element of a list
+firstElement <- function(x){x[1]}
+# Apply the function to the splitted vector
+sapply(splitted_vector, firstElement)
+# Column names format 2
+w <- c("zip_codes", "location_1", "address_1", "cross_street")
+# Replace a pattern from a character vector with blank spaces
+sub("_", "", w)
+# Replace all patterns found on a character vector with blank spaces
+z <- c("_zip_codes", "_location_1", "_address_1", "_cross_street")
+gsub("_", "", z)
+```
+
+### Finding Values  
+```{r, eval = FALSE}
+# Use grep() to search for a character inside a column or vector and return the element number where it is located
+grep("Alameda", cameraData$intersection)
+
+# Use grepl() to search for a character inside a column or vector and return a logical object
+grepl("Alameda", cameraData$intersection))
+
+# Use the table() with grepl() to count the number of coincidences on each result
+table(grepl("Alameda", cameraData$intersection))
+
+# Subset a data set with grepl() to exclude all rows that have an specific character
+cameraData2 <- cameraData[!grepl("Alameda", cameraData$intersection), ]
+
+# Use grep() with argument "value" to return the values where the specified character appears in a data set
+grep("Alameda", cameraData$intersection, value = TRUE)
+
+# Use length() with grep() to compute the number of coincidences of an specific character
+length(grep("JeffStreet", cameraData$intersection))
+```
+### More Useful String Functions  
+```{r, eval = FALSE}
+library(stringr)
+# Count the number of characters inside a character vector
+nchar("Count number of characters")
+
+# Extract letters from a character using substr()
+substr("Extract the last word", 18, 21)
+
+# Use paste() to join n strings into one
+paste("First", "Name")
+
+# Use paste0() to join n strings into one without spaces in between
+paste0("First", "Name")
+
+# Use str_trim() to delete blank spaces on a string
+str_trim("First    ")
+```
+
+### Important Text Characteristics in Datasets  
+Variable names should be:  
+- All lower case when possible,  
+
+- Descriptive when possible,  
+
+- Not duplicated,  
+
+- Not have underscores or dots with spaces.  
+
+Variables with character values:  
+- Should usually be made factors (depending on application)  
+
+- Should be descriptive (use TRUE/FALSE instead of 1/0)  
+
+## Regular Expressions  
+These are combinations of:  
+
+* **literals**, words that match exactly in the text being tested.  
+
+* **metacharacters**, characters with special meaning that perform a certain task.  
+
+  + The **caret symbol (^)** followed by a word or set of words is used to search for matches only at the start of the text being tested.  
+
+  + The **dollar sign symbol ($)** proceeding a word or set of words is used to search for matches only at the end of the text being tested.  
+
+  + The **square brackets symbol []** is used to match the letters specified in between these anywhere in the text being tested. A range of letters and numbers can be specified by using: [0-9] for numbers, and [a-z] or [a-zA-Z] for letters. Note that the order does not matter.  
+
+  + The **dot symbol** "." is used to look for any character in the text that follows the same pattern as the dot was specified. For example: 9.11 will look for any number 9 followed by the number 11 and separated by a character.  
+
+  + The **or** metacharacter "|" is used after a literal or expression to combine it with another expressions.  
+
+  + The **repetition** is used to indicate repetition. The "+" includes any number of repetitions, including none.
+
+Examples: ^[Gg]ood|[Bb]ad will match all words at the beginning of the text that has the word "good" with lower or upper case, or all words that match "bad" with lower or upper case but not necessarily at the beginning of the text. To include this indication, the expression must be constrained (use parenthesis to include the last expression): (^[Gg]ood|[Bb]ad).  
+
+Note: if you want to look for a word or symbol that is used as a metacharacter you need to "escape" the metacharacter proceeding with a backslash.  
+  
+## Working with Dates  
+```{r Dates}
+# Print the actual date and time and the object class
+date()
+class(date())
+
+# Print the actual date and the object class
+Sys.Date()
+class(Sys.Date())
+```
+
+### Formatting Dates  
+```{r Formatting Dates}
+# Show the actual date by abbreviated weekday, abbreviated month and the day as number
+format(Sys.Date(), "%a %b %d")
+```
+
+| Conversion specification 	| Description 	| Example 	|
+|-	|-	|-	|
+| %a 	| Abbreviated weekday 	| Sun, Thu 	|
+| %A 	| Full weekday 	| Sunday, Thursday 	|
+| %b or %h 	| Abbreviated month 	| May, Jul 	|
+| %B 	| Full month 	| May, July 	|
+| %d 	| Day of the month [01-31] 	| 27, 07 	|
+| %j 	| Day of the year [001-366] 	| 148, 188 	|
+| %m 	| Month [01-12] 	| 05, 07 	|
+| %U 	| Week [01-53] with Sunday as first day of the week 	| 22, 27 	|
+| %w 	| Weekday [0-6] Sunday is 0 	| 0, 4 	|
+| %W 	| Week [01-53] with Monday as first day of the week 	| 21, 27 	|
+| %x 	| Date, locale-specific 	|  	|
+| %y 	| Year without century [00-99] 	| 84, 05 	|
+| %Y 	| Year with century 	| 1984, 2005 	|
+| %C 	| Century 	| 19, 20 	|
+| %D 	| Date formatted %m/%d/%y 	| 05/27/84, 07/07/05 	|
+| %u 	| Weekday [1-7] Monday is 1 	| 7, 4 	|
+| %n 	| Newline on output or arbitrary whitespace on input 	|  	|
+| %t 	| Tab on output or arbitrary whitespace on input 	|  	|
+
+### Creating Dates  
+```{r Creating Dates}
+# Vector of text dates
+text_dates <- c("1jan1960", "2jan1960", "31mar1960", "30jul1960")
+
+# Format text dates into date
+dates <- as.Date(text_dates, "%d%b%Y")
+dates
+
+# Calculate date difference
+## In date format
+dates[1] - dates[2]
+
+## In number format
+as.numeric(dates[1] - dates[2])
+```
+
+```{r Converting to Julian Dates}
+# Show the weekday for a date
+weekdays(Sys.Date())
+
+# Show the month for a date
+months(Sys.Date())
+
+# Number of days since a origin date
+julian(Sys.Date())
+```
+
+### Lubridate Package  
+```{r Dates with Lubridate}
+library(lubridate)
+
+# Convert text in any format into dates
+ymd("20210101")
+mdy("01/01/2021")
+dmy("01-01-2021")
+```
+
+```{r Times with Lubridate}
+# Convert text in any format into time
+ymd_hms("2021-01-01 05:52:15")
+
+# Show your time zone
+Sys.timezone()
+
+# Convert text in any format into time and specify the time zone
+ymd_hms("2021-01-01 05:52:15", tz="America/Mexico_City")
+```
+
+### Lubridate vs Base R  
+```{r Lubridate vs Base R}
+# Convert a character vector into dates
+x <- dmy(c("1jan2020", "2jan2020", "31mar2020", "30jul2020"))
+
+# Show the weekday in number for every element of the vector
+wday(x[1:length(x)])
+
+# Show the weekday in text for every element of the vector
+wday(x[1:length(x)], label = TRUE)
+```
+
+### More Information on Lubridate    
+[Do More with Dates and Times with Lubridate](https://lubridate.tidyverse.org/articles/lubridate.html)
+
+## Data Resources  
+
+### Open Government Sites  
+[U.S. and International Open Data](https://www.data.gov/open-gov/)
+
+### Gapminder  
+[Gapminder](https://www.gapminder.org/data/)
+
+### Kaggle  
+[Kaggle Datasets](https://www.kaggle.com/datasets)
+
+### Specialized Collections  
+[Stanford Large Network Data](http://snap.stanford.edu/data/)
+[UCI Machine Learning](http://archive.ics.uci.edu/ml/)
+[KDD Nugets Datasets](http://www.kdnuggets.com/datasets/index.html)
+[CMU Statlib](http://lib.stat.cmu.edu/datasets/)
+[Gene expression omnibus](http://www.ncbi.nlm.nih.gov/geo/)
+[ArXiv Data](http://arxiv.org/help/bulk_data)
+[Public Data Sets on Amazon Web Services](http://aws.amazon.com/publicdatasets/)
+
+### API's with R Interfaces  
+[twitter](https://dev.twitter.com/) and [twitteR](http://cran.r-project.org/web/packages/twitteR/index.html) package
+[figshare](http://api.figshare.com/docs/intro.html) and [rfigshare](http://cran.r-project.org/web/packages/rfigshare/index.html)
+[PLoS](http://api.plos.org/) and [rplos](http://cran.r-project.org/web/packages/rplos/rplos.pdf)
+[rOpenSci](http://ropensci.org/packages/index.html)
+[Facebook](https://developers.facebook.com/) and [RFacebook](http://cran.r-project.org/web/packages/Rfacebook/)
+[Google maps](https://developers.google.com/maps/) and [RGoogleMaps](http://cran.r-project.org/web/packages/RgoogleMaps/index.html)
+

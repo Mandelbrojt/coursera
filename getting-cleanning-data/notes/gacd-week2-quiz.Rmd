@@ -1,0 +1,79 @@
+---
+title: "GACD Week 2 Quiz"
+author: "Luis Moreno"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 1. 
+Instructions: Register an application with the Github API here https://github.com/settings/applications. Access the API to get information on your instructors repositories (hint: this is the url you want "https://api.github.com/users/jtleek/repos").  
+Use this data to find the time that the datasharing repo was created.  
+What time was it created?
+```{r, eval = FALSE}
+library(jsonlite)
+URL <- "https://api.github.com/users/jtleek/repos"
+jsonData <- fromJSON(URL)
+names(jsonData)
+df <- data.frame(jsonData)
+library(dplyr)
+ds <- filter(df, name == "datasharing")
+names(ds)
+ds <- select(ds, c("id", "name", "created_at", "updated_at"))
+ds$created_at
+```
+
+### Question 2 and 3  
+The **sqldf** package allows for execution of SQL commands on R data frames. We will use the sqldf package to practice the queries we might send with the dbSendQuery command in RMySQL.  
+Download the American Community Survey data and load it into an R object called "acs"  
+Which of the following commands will select only the data for the probability weights pwgtp1 with ages less than 50?  
+```{r, eval = FALSE}
+# Download the CSV file from the Web
+file_URL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06pid.csv"
+download.file(file_URL, destfile = "./data/acs.csv", method = "curl")
+# Read the downloaded file as a CSV and convert it to a data frame
+file_path <- "./data/acs.csv"
+library(readr)
+acs <- read_csv(file_path)
+acs <- data.frame(acs)
+# Install the "sqldf" package, including H2
+install.packages("sqldf", dep = TRUE)
+# Load the "sqldf" package
+library(sqldf)
+# Select only the data for the probability weights "pwgtp1" with ages less than 50
+sqldf("select pwgtp1 from acs where AGEP < 50")
+# What is the equivalent function to "unique(acs$AGEP) in SQL?"
+u <- data.frame(unique(acs$AGEP))
+class(u)
+head(u, 10)
+u2 <- sqldf("select distinct AGEP from acs")
+class(u2)
+head(u2, 10)
+head(u == u2, 5)
+```
+### Question 4  
+How many characters are in the 10th, 20th, 30th and 100th lines of HTML from this page: http://biostat.jhsph.edu/~jleek/contact.html  
+```{r, eval = FALSE}
+con = url("http://biostat.jhsph.edu/~jleek/contact.html")
+htmlCode = readLines(con)
+close(con)
+# Extract characters in the 10th, 20th, 30th and 100th lines
+htmlCode[c(10, 20, 30, 100)]
+# Count the number of characters of each line
+nchar(htmlCode[c(10, 20, 30, 100)])
+```
+### Question 5  
+Read this data set into R and report the sum of the numbers in the fourth of the nine columns.  
+https://d396qusza40orc.cloudfront.net/getdata%2Fwksst8110.for  
+Original source of the data: http://www.cpc.ncep.noaa.gov/data/indices/wksst8110.for  
+
+(Hint this is a fixed width file format)  
+```{r, eval = FALSE}
+download.file("https://d396qusza40orc.cloudfront.net/getdata%2Fwksst8110.for", destfile = "./data/weekly_sst.txt", method = "curl")
+library(readr)
+file_path <- "./data/weekly_sst.txt"
+columns <- c("week", "n1_sst")
+df <- read_fwf(file_path, fwf_empty(file_path, col_names = c("week", "n1+2_SST", "n1+2_SSTA", "n3_SST", "n3_SSTA", "n34_SST", "n34_SSTA", "n4_SST", "n4_SSTA")))
+```

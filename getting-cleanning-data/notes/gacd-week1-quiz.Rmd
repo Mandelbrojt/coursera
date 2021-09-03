@@ -1,0 +1,80 @@
+---
+title: "Week 1. GACD Quiz"
+author: "Luis Moreno"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Question 1  
+
+The American Community Survey distributes downloadable data about United States communities. Download the 2006 microdata survey about housing for the state of Idaho using download.file() from here:   https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06hid.csv  
+How many properties are worth $1,000,000 or more?  
+```{r, eval = FALSE}
+library(readr)
+us_comminities <- "./data/us_communities.csv"
+df <- data.frame(read_csv(us_comminities))
+VAL <- df$VAL
+VAL <- na.omit(df$VAL)length(mio_val)
+mio_val <- subset(VAL, VAL == "24")
+length(mio_val)
+```
+
+### Question 2  
+Use the data you loaded from Question 1. Consider the variable FES in the code book. Which of the "tidy data" principles does this variable violate?   
+**Answer**: Each variable in the tidy data set has been transformed to be interpretable.  
+
+### Question 3  
+Download the Excel spreadsheet on Natural Gas Aquisition   Program here: https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FDATA.gov_NGAP.xlsx  
+Read rows 18-23 and columns 7-15 into R and assign the result to a variable called "dat".    
+What is the value of: sum(dat$Zip*dat$Ext,na.rm=T)  
+```{r, eval = FALSE}
+library(readxl)
+fileURL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2FDATA.gov_NGAP.xlsx"
+download.file(fileURL, destfile = "./data/nat_gas_adq.xlsx")
+xlsx_file_path <- "./data/nat_gas_adq.xlsx"
+dat <- read_excel(xlsx_file_path, range = "G18:O23")
+sum(dat$Zip*dat$Ext, na.rm = TRUE)
+```
+
+### Question 4   
+Read the XML data on Baltimore restaurants from here:   https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Frestaurants.xml  
+How many restaurants have zipcode 21231?  
+```{r, eval = FALSE}
+fileURL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Frestaurants.xml"
+download.file(fileURL, destfile = "./data/baltimore_restaurants.xml")
+library(XML)
+file_path <- "./data/baltimore_restaurants.xml"
+doc <- xmlTreeParse(file_path, useInternalNodes = TRUE)
+rootNode <- xmlRoot(doc)
+zip_codes <- xpathSApply(rootNode, "//zipcode", xmlValue)
+length(subset(zip_codes, zip_codes == "21231"))
+```
+
+### Question 5  
+The American Community Survey distributes downloadable data about United States communities. Download the 2006 microdata survey about housing for the state of Idaho using download.file() from here:  
+https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06pid.csv  
+using the fread() command load the data into an R object "DT" The following are ways to calculate the average value of the variable "pwgtp15" broken down by sex.  
+Using the data.table package, which will deliver the fastest user time?    
+
+```{r, eval = TRUE}
+fileURL <- "https://d396qusza40orc.cloudfront.net/getdata%2Fdata%2Fss06pid.csv"
+library(readr)
+library(data.table)
+file_path <- "./data/american_comm_survey.csv"
+DT = fread(file_path)
+system.time(mean(DT$pwgtp15, by = DT$SEX))
+system.time(tapply(DT$pwgtp15, DT$SEX, mean))
+system.time(DT[, mean(pwgtp15), by = SEX])
+system.time(sapply(split(DT$pwgtp15, DT$SEX), mean))
+system.time(mean(DT[DT$SEX == 1, ]$pwgtp15)) + system.time(mean(DT[DT$SEX == 2, ]$pwgtp15))
+
+system.time(tapply(DT$pwgtp15,DT$SEX,mean))
+system.time(mean(DT[DT$SEX==1,]$pwgtp15), mean(DT[DT$SEX==2,]$pwgtp15))
+system.time(sapply(split(DT$pwgtp15,DT$SEX),mean))
+system.time(DT[,mean(pwgtp15),by=SEX])
+system.time(sapply(split(DT$pwgtp15,DT$SEX),mean))
+```
+**ANSWER: DT[,mean(pwgtp15), by=SEX]** 

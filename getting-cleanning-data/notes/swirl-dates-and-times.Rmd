@@ -1,0 +1,71 @@
+---
+title: "Date and  Time with Lubridate"
+output: html_notebook
+---
+```{r }
+# Getting details of the locale
+Sys.getlocale("LC_TIME")
+
+# Load the lubridate package
+library(lubridate)
+
+# Getting help on lubridate package
+help(package = lubridate)
+
+# Show the current date
+this_day <- today()
+
+# Show the day, month or year
+day(this_day); month(this_day); year(this_day)
+
+# Show the weekday number and name
+wday(this_day)
+wday(this_day, label = TRUE)
+
+# Show the current time-date
+this_moment <- now()
+
+# Show the hour, minute and second
+hour(this_moment); minute(this_moment); second(this_moment)
+
+# Parse a character string into a POSIXct object
+my_date <- ymd("1989-05-17")
+my_date <- ymd("1989/05/17")
+
+# Parse a numeric value into a POSIXct object
+dmy(25081985)
+
+# Parse a character string into time format
+hms("03:22:14")
+
+# Update one or more components of a date-time
+update(this_moment, hours = 8, minutes = 34, seconds = 55)
+
+# Find the current date of a city
+nyc <- now(tzone = "America/New_York")
+class(nyc)
+
+# Add two days to a date
+depart <- nyc + days(2)
+class(depart)
+
+# Update a date-time object
+depart <- update(depart, hours = 17, minutes = 34)
+
+# Add hours and minutes to a date-time object
+arrive <- depart + hours(15) + minutes(50)
+
+# Convert a date-time into a different time zone
+arrive <- with_tz(arrive, tzone = "Asia/Hong_Kong")
+
+# Parse a date and assign a time zone
+last_time <- mdy("June 17, 2008", tz = "Singapore")
+
+# Create an interval with dates
+how_long <- interval(start = last_time, end = arrive)
+
+# Calculate how many time has passed in the interval
+as.period(how_long)
+```
+
+`instants()`, `intervals()`, `durations()` and `periods()` address the complexity of relativity in minutes, days, months and weeks because of leap years, leap seconds and daylight savings time.

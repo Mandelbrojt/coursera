@@ -1,0 +1,236 @@
+---
+title: "Data Visualization Notes"
+author: "Luis Moreno"
+date: "12/27/2020"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction to Tidyverse  
+The process of structuring datasets to facilitate analysis is called "data tidying" by Hadley Wickham.  
+
+Requisites to classify a dataset as tidy:   
+
+1. Each variable forms a column  
+
+2. Each observation forms a row  
+
+3. Each type of observational unit forms a table.  
+
+
+More information on tidy data can be found at:
+
+``` {r Tidyverse Vignette, eval=FALSE}
+vignette("tidy-data")
+```
+
+To use the "tidyverse" commands the package must be installed first and then loaded with:
+
+``` {r Importing the Tidyverse Package, warning = FALSE}
+library(tidyverse)
+```
+
+
+## Importing Data  
+### Read CSV  
+The difference between the base R read.csv and tidyverse read_csv is the output, this latter results in a "tibble" class object.  
+
+
+
+# R for Data Science  
+
+## 1. Introduction  
+**Figure 1**. Basic Data Science Cycle  
+![Data Science Cycle](/Users/luism/Documents/R/data-viz-intro/images/data-science-cycle.png)  
+
+### Data Science Cycle  
+1. **Import data**  
+  Take data stored on a file, database or API and load it into a data frame in R.
+
+2. **Tidy data**  
+  Store data in a consistent form. When data is tidy, each column is a variable and each row is an observation.  
+  
+3. **Transform data**  
+  Calculate new variables and summary statistics for observations of interest.   
+
+4. **Visualization**  
+  Represent your data in a graphical way to understand your questions.  
+
+5. **Models**  
+  It complements visualization and tries to answer questions.  
+  
+6. **Communicate**  
+  Share your results with others.  
+
+7. **Programming**  
+  It is a cross-cutting tool that is used in every part of the project.
+  
+## Tibbles  
+A `tibble` is a specialized version of a data frame that is setup to work better with the tidyverse.  
+
+More information on "tibbles" can be found at:  
+``` {r Tibble Vignette, eval = FALSE}
+vignette("tibble")
+```
+
+To coerce a regular data frame into a tibble use:
+```{r Tibble coercion, eval= FALSE}
+as_tibble(data-frame-name)
+```
+
+Create a new tibble from individual vectors  
+```{r, Tibble creation}
+tibble(
+  names = c("Pedro", "Maria", "Natalia"),
+  age = c(21, 34, 19),
+  profession = c("Cashier", "Nurse", "Accountant")
+)
+```
+
+Some properties of a `tibble`includes:  
+- never changes the type of the inputs,  
+- never changes the names of variables,  
+- never creates row names.  
+
+Create a `tibble` by transposing its input with `tribble`. Consider that variable names start with `~` and entries are separated by commas.    
+```{r tribble}
+tribble(
+  ~names, ~age, ~profession,
+#  -----|-----|------------|
+  "Pedro", 21, "Cashier",
+  "Maria", 34, "Nurse",
+  "Natalia", 19, "Accountant"
+)
+```
+
+### `tibble` versus  `data.frame`  
+
+#### Printing  
+
+- Tibbles show the first 10 rows and all the columns that fit on screen when printed. To show more results use the `print()`command and specify the number of rows with `n`and the `width`of the display (use Inf to show all columns).  
+
+- Use `View()`to navigate on large tibbles inside R.  
+
+#### Subsetting  
+
+- Extract a variable by name using `$`  
+
+- Extract a variable by name or position using `[[]]`.  
+
+```{r Subsetting Tibbles}
+top_cartoons <- tibble(
+  cartoon_name = c("Dexter´s Laboratory", "Rugrats", "Hey Arnold!"),
+  release_year = c(1996, 1991, 1996)
+)
+
+# Extract variable by name
+top_cartoons$cartoon_name
+top_cartoons[["cartoon_name"]]
+
+# Extract variable by position
+top_cartoons[[1]]
+```
+
+Subsetting with a `pipe`can be done using the special placeholder `.`as follows:
+```{r Subsetting Tibbles with Pipes}
+top_cartoons %>% .$cartoon_name
+top_cartoons %>% .[["cartoon_name"]]
+```
+
+**NOTE**: tibbles never do partial matching and generate warnings if the column you are trying to access does not exist.  
+
+#### Interacting with older code  
+
+Some older functions (as `[`) don´t work with tibbles, in those cases use `as.data.frame()` to return a tibble back to a `data.frame`.  
+
+`dplyr::filter()`and `dplyr::select()` do the same as the `[` function but with clearer code.  
+
+**NOTE**: using `[` with tibbles always returns another tibble.  
+
+
+Find the complete list of `tibble`settings with:  
+```{r Tibble Settings, eval = FALSE}
+package?tibble
+```
+
+## Data Import  
+
+Most `readr` functions turn files into data frames.  
+
+- `read_csv()`: reads comma delimited files.  
+
+- `read_csv2()`: reads semicolon separated files.  
+
+- `read_tsv()`: reads tab delimited files.  
+
+- `read_delim`: reads in files with any delimiter.  
+
+- `read_fwf()`: reads fixed width files.  
+
+- `read_table()`: reads a common variation of fixed width files where columns are separated by white space.  
+
+- `read_log()`: reads Apache style log files.  
+
+Inline CSV files can be created with `read_csv()`:   
+```{r Inline CSV}
+read_csv("streaming_platform, monthly_price, pricing_year
+Netflix, 8.99, 2021
+Prime Video, 12.99, 2021
+Disney+, 7.99, 2021")
+```
+When creating inline CSV files the first line of data is used as the column names.  
+
+When there is metadata at the top of the file You can use `skip = n` to skip the first `n` lines; or use `comment = "#"` to drop all lines that start with (e.g.) `#`.  
+
+```{r CSV files with Metadata}
+read_csv("The first line of metadata
+  The second line of metadata
+  x,y,z
+  1,2,3", skip = 2)
+
+read_csv("# A comment I want to skip
+  x,y,z
+  1,2,3", comment = "#")
+```
+
+If the data does not have column names, use `col_names = FALSE` to label the first row sequentially from `X1` to `Xn`. Use the "\n" shortcut for adding a new line.     
+```{r CSV without column names}
+read_csv("1,2,3\n4,5,6", col_names = FALSE)
+```
+
+
+## Functions Glossary  
+### Data Manipulation Functions  
+
+[read_csv()](https://www.rdocumentation.org/packages/readr/versions/1.3.1/topics/read_delim): reads a CSV file into R.  
+[as.data.frame()](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/as.data.frame): check if an object is a data frame, or coerce it if possible.  
+[as_tibble()](https://www.rdocumentation.org/packages/tibble/versions/3.0.4/topics/as_tibble): turns an existing object, into a so-called tibble, a data frame with class `tbl_df`.  
+[drop_na()](https://www.rdocumentation.org/packages/tidyr/versions/0.8.3/topics/drop_na): drop rows containing missing values.  
+[filter()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/filter): find rows/cases where conditions are true.  
+[dim()](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/dim)  
+[table()](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/table)  
+[head()](https://www.rdocumentation.org/packages/utils/versions/3.6.2/topics/head)  
+[select()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/select)  
+[filter()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/filter)  
+[recode()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/recode)  
+[rename()](https://www.rdocumentation.org/packages/plyr/versions/1.8.6/topics/rename)  
+[arrange()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/arrange)  
+[group_by()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/group_by)  
+[ungroup()](https://www.rdocumentation.org/packages/dplyr/versions/0.7.8/topics/group_by)  
+[summarise()](https://www.rdocumentation.org/packages/plyr/versions/1.8.6/topics/summarise)  
+[enframe()](https://tibble.tidyverse.org/reference/enframe.html): converts atomic vectors or lists to one or two-column data frames.  
+
+
+## Definitions Glossary  
+[pipes](https://www.datacamp.com/community/tutorials/pipe-r-tutorial#intro)  
+[tidy data](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html)  
+[tibble](https://tibble.tidyverse.org/articles/tibble.html)  
+[readr](https://readr.tidyverse.org/articles/readr.html)  
+
+## Packages References  
+[dplyr functions](https://dplyr.tidyverse.org/reference/index.html#section-two-table-verbs)  
+[dplyr](https://dplyr.tidyverse.org/articles/dplyr.html)  
